@@ -3,9 +3,9 @@ import random
 import requests
 from tkinter import messagebox
 from urllib.parse import quote
+from choose import Choose
 
 window = tk.Tk()
-currentQuestion = ""
 prevQuestion = ""
 answer_was_right = None
 prevRightAnswer = ""
@@ -35,6 +35,7 @@ for value in questions_dict.values():
     for item in value:
         if item not in questions:
             questions.append(item)
+choose = Choose(questions)
 
 
 def clear_view():
@@ -60,9 +61,9 @@ question_text = stretch_text("")
 
 
 def next_question():
-    global currentQuestion
-    currentQuestion = random.choice(questions)
-    question_text.set(currentQuestion)
+    # choose.next_question()
+    choose.next_question_modern()
+    question_text.set(choose.current_question)
 
 
 def change_view(next_view_fun):
@@ -73,7 +74,7 @@ def change_view(next_view_fun):
 def answer_on_question(answer):
     right_answers = []
     for key, item_list in questions_dict.items():
-        if currentQuestion in item_list:
+        if choose.current_question in item_list:
             right_answers.append(key)
     right_answers_view = ""
     for index, other_answer in enumerate(right_answers):
@@ -81,16 +82,27 @@ def answer_on_question(answer):
             right_answers_view += ', '
         right_answers_view += answer_view_dict[other_answer]
     if answer is not None and answer in right_answers:
-        right_answer_text.set("Right! " + currentQuestion + " is " + right_answers_view + ".")
+        right_answer_text.set("Right! " + choose.current_question + " is " + right_answers_view + ".")
         right_answer_label.configure(bg="green")
+        choose.add_statistics(choose.current_question)
+        if choose.get_statistics(choose.current_question) % 3 == 0:
+            choose.blacklisted_questions[choose.current_question] = 20
+            # modern
+            choose.add_chance(choose.current_question, -50)
+
     else:
-        right_answer_text.set("Wrong! " + currentQuestion + " is " + right_answers_view + ".")
+        right_answer_text.set("Wrong! " + choose.current_question + " is " + right_answers_view + ".")
         right_answer_label.configure(bg="red")
+        choose.statistics[choose.current_question] = 0
+        choose.order[choose.current_question] = 3
+        # modern
+        choose.add_chance(choose.current_question, 20)
+
     next_question()
 
 
 def send_translate_request():
-    url = "https://api.mymemory.translated.net/get?langpair=en|uk&q=" + quote(currentQuestion, safe=':/')
+    url = "https://api.mymemory.translated.net/get?langpair=en|uk&q=" + quote(choose.current_question, safe=':/')
     response = requests.get(url)
     if response.status_code == 200:
         return response.json()['responseData']['translatedText']
